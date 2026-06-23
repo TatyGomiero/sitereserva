@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reserva Directa - Alojamento Local</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #e74c3c;
+            --bg-color: #f8f9fa;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--primary-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .booking-card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            max-width: 450px;
+            width: 100%;
+        }
+
+        h2 {
+            margin-top: 0;
+            border-bottom: 2px solid var(--bg-color);
+            padding-bottom: 10px;
+        }
+
+        .price-tag {
+            font-size: 1.2em;
+            margin-bottom: 20px;
+        }
+
+        .price-tag strong {
+            color: var(--accent-color);
+            font-size: 1.4em;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        input[type="date"], input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+
+        .stripe-mock {
+            background: #f4f6f8;
+            border: 1px dashed #4b6584;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+        }
+
+        .stripe-logo {
+            font-weight: bold;
+            color: #6772e5;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .summary {
+            background: #fff9f9;
+            border: 1px solid #ffeaea;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .btn-pay {
+            background: #6772e5;
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: background 0.2s;
+        }
+
+        .btn-pay:hover {
+            background: #5465d1;
+        }
+    </style>
+</head>
+<body>
+
+<div class="booking-card">
+    <h2>Reserva a tua Estadia</h2>
+    <div class="price-tag">Preço por noite: <strong id="price-per-night">120</strong>€</div>
+
+    <form id="booking-form">
+        <div class="form-group">
+            <label for="checkin">Data de Check-in:</label>
+            <input type="date" id="checkin" required>
+        </div>
+
+        <div class="form-group">
+            <label for="checkout">Data de Check-out:</label>
+            <input type="date" id="checkout" required>
+        </div>
+
+        <div class="summary" id="booking-summary">
+            <div>Noites: <span id="total-nights">0</span></div>
+            <div style="font-size: 1.2em; margin-top: 5px; font-weight: bold;">
+                Total a pagar: <span id="total-price">0</span>€
+            </div>
+        </div>
+
+        <div class="stripe-mock">
+            <span class="stripe-logo">Stripe Checkout</span>
+            <div class="form-group">
+                <label for="card-mock">Número do Cartão (Simulação):</label>
+                <input type="text" id="card-mock" placeholder="4242 4242 4242 4242" value="4242 4242 4242 4242" disabled>
+            </div>
+        </div>
+
+        <button type="submit" class="btn-pay" id="pay-button">Pagar com o Stripe</button>
+    </form>
+</div>
+
+<script>
+    const PRECO_NOITE = 120;
+    const checkinInput = document.getElementById('checkin');
+    const checkoutInput = document.getElementById('checkout');
+    const summaryDiv = document.getElementById('booking-summary');
+    const totalNightsSpan = document.getElementById('total-nights');
+    const totalPriceSpan = document.getElementById('total-price');
+    const form = document.getElementById('booking-form');
+
+    // Define a data mínima de check-in como "hoje"
+    const hoje = new Date().toISOString().split('T')[0];
+    checkinInput.min = hoje;
+
+    // Função para calcular noites e preço
+    function calcularTotal() {
+        const checkinDate = new Date(checkinInput.value);
+        const checkoutDate = new Date(checkoutInput.value);
+
+        // Garante que o checkout não é antes do check-in
+        checkoutInput.min = checkinInput.value;
+
+        if (checkinInput.value && checkoutInput.value && checkoutDate > checkinDate) {
+            const diferencaTempo = checkoutDate - checkinDate;
+            const diferencaDias = Math.ceil(diferencaTempo / (1000 * 60 * 60 * 24));
+            
+            const precoTotal = diferencaDias * PRECO_NOITE;
+
+            // Atualiza o ecrã
+            totalNightsSpan.innerText = diferencaDias;
+            totalPriceSpan.innerText = precoTotal;
+            summaryDiv.style.display = 'block';
+        } else {
+            summaryDiv.style.display = 'none';
+        }
+    }
+
+    // Ouvintes de eventos para recalcular o preço quando o utilizador muda as datas
+    checkinInput.addEventListener('change', calcularTotal);
+    checkoutInput.addEventListener('change', calcularTotal);
+
+    // Simulação do envio do formulário e chamada do Stripe
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const total = totalPriceSpan.innerText;
+        
+        if(total === "0") {
+            alert("Por favor, selecione datas válidas.");
+            return;
+        }
+
+        // Aqui entraria a chamada de API real para o Stripe. No código real seria:
+        // stripe.redirectToCheckout({ sessionId: YOUR_SESSION_ID });
+
+        alert(`💰 Simulação de Sucesso!\n\nO Stripe processou o pagamento de ${total}€ com sucesso.\nA sua reserva está confirmada.`);
+    });
+</script>
+
+</body>
+</html>
